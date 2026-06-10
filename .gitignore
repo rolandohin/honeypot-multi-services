@@ -1,0 +1,44 @@
+# Logs et base de données
+logs/
+*.db
+*.log
+
+# Clés SSH générées automatiquement
+keys/
+
+# Rapports PDF générés
+reports/
+
+# Environnement virtuel Python
+venv/
+env/
+.env
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Fichiers systèmes
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+
+# Répertoire FTP factice
+/tmp/honeypot_ftp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Base de géolocalisation (licence MaxMind + poids)
+geoip/
+*.mmdb
+
+# Archives de transfert
+*.zip
