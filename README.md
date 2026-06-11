@@ -1,325 +1,141 @@
-# 🍯 Honeypot Multi-Services
 
-<div align="center">
+![Dashboard de supervision](modules/dashboard.jpg)
 
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-2.x-000000?style=for-the-badge&logo=flask&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
-![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)
-![Security](https://img.shields.io/badge/Cybersecurity-Honeypot-red?style=for-the-badge&logo=hackthebox&logoColor=white)
+# Honeypot multi-services
 
-**Honeypot multi-services développé from scratch en Python**
-*Capture, analyse et visualisation des tentatives d'intrusion en temps réel*
+Honeypot multi-services développé from scratch en Python, sans recourir à des
+solutions existantes (Cowrie, Dionaea, OpenCanary). Il émule quatre services
+réseau fréquemment ciblés, capture les interactions des attaquants et les
+analyse via un tableau de bord de supervision en temps réel.
 
-[Fonctionnalités](#-fonctionnalités) •
-[Architecture](#-architecture) •
-[Installation](#-installation) •
-[Utilisation](#-utilisation) •
-[Dashboard](#-dashboard) •
-[Résultats](#-résultats-observés)
+Projet annuel — ESGI, filière Sécurité Informatique.
+Auteur : Kouassi Yves-Roland OHIN-CODJOVI.
 
-</div>
+## Principe
 
----
+Un honeypot est un système délibérément exposé, conçu pour être attaqué. Son
+intérêt n'est pas le service rendu mais l'observation : en attirant les
+attaquants vers un leurre isolé, il révèle les identifiants testés, les
+commandes saisies et les techniques employées, sans exposer le moindre actif
+réel.
 
-## 📌 Présentation
+Ce projet est un honeypot d'interaction moyenne : il accepte les connexions et
+capture le comportement post-authentification des attaquants, mais ne fournit
+jamais de véritable interpréteur de commandes. Les réponses sont simulées,
+aucune commande n'est réellement exécutée sur la machine hôte.
 
-Ce projet est un **honeypot multi-services** entièrement développé from scratch en Python, sans utilisation de solutions existantes (Cowrie, Glastopf, OpenCanary, HoneyD...).
+## Services émulés
 
-Un honeypot est un **leurre informatique** : un système délibérément conçu pour attirer les attaquants, capturer leurs actions et analyser leurs techniques. Utilisé en cybersécurité défensive, il permet de :
+| Service | Port (prod) | Ce qui est capturé |
+|---------|-------------|--------------------|
+| SSH  | 22 | Identifiants testés et commandes shell saisies |
+| HTTP | 80 | Soumissions de formulaires, User-Agent, chemins scannés |
+| FTP  | 21 | Identifiants testés et fichiers consultés |
+| SMTP | 25 | Tentatives de relais, expéditeur et destinataires |
 
-- 🎯 Comprendre les **vecteurs d'attaque** courants (bruteforce, scanning, credential stuffing...)
-- 📊 Constituer une **base de données d'IoC** (Indicators of Compromise)
-- 🛡 Alimenter des **listes noires** d'IPs et de credentials
-- 🔍 Étudier le comportement **post-authentification** des attaquants
+Le tableau de bord de supervision écoute en local sur le port 5000 et n'est
+jamais exposé publiquement (accès par tunnel SSH uniquement).
 
-> 🎓 Projet Annuel — ESGI · Filière Sécurité Informatique · Classe 3SI2
-> 👨‍💻 **Kouassi Yves-Roland OHIN-CODJOVI**
+## Architecture
 
----
-
-## ✨ Fonctionnalités
-
-### Services émulés
-
-| Service | Port | Protocole | Ce qui est capturé |
-|---------|------|-----------|-------------------|
-| 🔐 **SSH** | 2222 | TCP | Credentials + commandes shell |
-| 🌐 **HTTP** | 8080 | TCP | Soumissions formulaires + User-Agent + paths |
-| 📁 **FTP** | 2121 | TCP | Credentials + fichiers consultés |
-| ✉️ **SMTP** | 2525 | TCP | Tentatives de relay + MAIL FROM/RCPT TO |
-| 📊 **Dashboard** | 5000 | HTTP | Interface de supervision temps réel |
-
-### Caractéristiques techniques
-
-- ✅ **100% from scratch** — zéro dépendance à des honeypots existants
-- ✅ **Architecture modulaire** — chaque service est indépendant, extensible
-- ✅ **Concurrence** — tous les modules tournent en parallèle via threading
-- ✅ **Bannières réalistes** — SSH-2.0-OpenSSH_8.2p1, ProFTPD 1.3.5e, Postfix...
-- ✅ **Shell SSH interactif** — simule un vrai bash avec ~40 commandes
-- ✅ **Faux système de fichiers** — /etc/passwd, /var/log, fichiers leurres FTP
-- ✅ **Logs centralisés** — base SQLite avec 3 tables structurées
-- ✅ **Dashboard temps réel** — refresh toutes les 5 secondes sans rechargement
-- ✅ **Rapports PDF** — graphiques et analyses générés automatiquement
-- ✅ **Déploiement one-shot** — script bash sur VM Ubuntu vierge en <3 minutes
-
----
-
-## 🏗 Architecture
+Le honeypot repose sur un orchestrateur qui lance chaque module de service dans
+un fil d'exécution distinct. Tous les modules consignent leurs observations dans
+une base SQLite centralisée, exploitée par le tableau de bord et par un module
+de génération de rapports. La capture et la supervision tournent en deux
+processus séparés : un incident sur le tableau de bord n'interrompt jamais la
+collecte.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      VM Ubuntu 22.04                         │
-│                                                             │
-│   ┌──────────┐     ┌────────────────────────────────────┐  │
-│   │ main.py  │────▶│           Modules                  │  │
-│   │Orchestr. │     │  SSH:2222  HTTP:8080  FTP:2121      │  │
-│   └──────────┘     │            SMTP:2525               │  │
-│                    └────────────────┬───────────────────┘  │
-│                                     │ events                │
-│                    ┌────────────────▼───────────────────┐  │
-│                    │         logger.py                   │  │
-│                    │    Log Collector + SQLite DB         │  │
-│                    └──────┬──────────────┬──────────────┘  │
-│                           │              │                  │
-│              ┌────────────▼──┐    ┌──────▼──────────┐      │
-│              │  dashboard.py │    │   report.py      │      │
-│              │  port 5000    │    │   PDF + graphs   │      │
-│              └───────────────┘    └──────────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-
-Flux : Attaquant → Service honeypot → Log Collector → DB → Dashboard/Rapport
+Attaquants
+    |
+Orchestrateur (main.py)
+    |
+    +-- Module SSH  (port 22)
+    +-- Module HTTP (port 80)
+    +-- Module FTP  (port 21)
+    +-- Module SMTP (port 25)
+    |
+Base SQLite centralisée
+    |
+    +-- Tableau de bord (dashboard.py)
+    +-- Module de rapports (report.py)
 ```
 
-### Structure des fichiers
+## Fonctionnalités
 
-```
-honeypot/
-│
-├── 📄 main.py              # Point d'entrée — orchestre tous les modules
-├── 📄 config.py            # Configuration centralisée (ports, bannières, faux FS)
-├── 📄 logger.py            # Collecteur de logs SQLite (3 tables)
-├── 📄 dashboard.py         # Serveur Flask — supervision temps réel (port 5000)
-├── 📄 report.py            # Génération rapports PDF (ReportLab + matplotlib)
-├── 📄 deploy.sh            # Script de déploiement automatisé Ubuntu
-│
-└── modules/
-    ├── 📄 ssh_module.py    # Honeypot SSH — Paramiko + shell interactif
-    ├── 📄 http_module.py   # Honeypot HTTP — Flask + pages leurres
-    ├── 📄 ftp_module.py    # Honeypot FTP — pyftpdlib + fichiers leurres
-    └── 📄 smtp_module.py   # Honeypot SMTP — aiosmtpd + capture relay
-```
+- Développement intégral en Python, architecture modulaire et extensible.
+- Émulation SSH avec shell interactif simulé et journalisation des commandes.
+- Fausse interface d'administration HTTP capturant les soumissions de formulaires.
+- Serveur FTP factice avec fichiers leurres.
+- Capture des tentatives de relais SMTP.
+- Journalisation centralisée en SQLite (mode WAL pour la concurrence).
+- Tableau de bord de supervision en temps réel, style SIEM.
+- Géolocalisation des adresses sources via base GeoLite2 locale (hors-ligne).
+- Déploiement automatisé avec configuration test / production.
 
-### Schéma de la base de données
+## Installation
 
-```sql
--- Table 1 : toutes les connexions
-connections (id, timestamp, service, src_ip, src_port,
-             username, password, success, duration, notes)
-
--- Table 2 : commandes saisies dans le shell SSH
-commands (id, connection_id, timestamp, command)
-
--- Table 3 : requêtes HTTP capturées
-http_requests (id, timestamp, src_ip, method, path,
-               user_agent, body)
-```
-
----
-
-## 🔧 Stack technique
-
-| Catégorie | Technologie | Usage |
-|-----------|------------|-------|
-| **Langage** | Python 3.11+ | Développement complet |
-| **SSH** | paramiko | Serveur SSH simulé |
-| **HTTP** | Flask + Jinja2 | Page leurre + dashboard |
-| **FTP** | pyftpdlib | Serveur FTP |
-| **SMTP** | aiosmtpd | Serveur mail |
-| **Concurrence** | threading + asyncio | Modules en parallèle |
-| **Base de données** | SQLite3 | Stockage des logs |
-| **Analyse** | pandas + matplotlib | Traitement et graphiques |
-| **Rapports** | ReportLab | Génération PDF |
-| **OS** | Ubuntu 22.04 LTS | Environnement de déploiement |
-
----
-
-## 🚀 Installation
-
-### Prérequis
-
-- Ubuntu 20.04 ou 22.04 LTS (VM ou bare metal)
-- Python 3.9 minimum
-- 512 MB RAM minimum
-
-### Option A — Déploiement automatisé (recommandé)
+Sur une machine Ubuntu 22.04 :
 
 ```bash
-git clone https://github.com/TON_USERNAME/honeypot-multi-services.git
+git clone https://github.com/rolandohin/honeypot-multi-services.git
 cd honeypot-multi-services
-chmod +x deploy.sh
 sudo bash deploy.sh
 ```
 
-Le script réalise automatiquement :
-- ✔️ Vérification OS et version Python
-- ✔️ Installation des dépendances système (apt)
-- ✔️ Création de l'environnement virtuel Python
-- ✔️ Installation des dépendances pip
-- ✔️ Création des services systemd (démarrage automatique)
-- ✔️ Configuration UFW (ouverture des 5 ports)
-- ✔️ Création des fichiers leurres FTP
+Le script installe les dépendances, crée l'environnement Python, télécharge la
+base de géolocalisation et configure les services systemd en mode production.
 
-### Option B — Installation manuelle
+## Utilisation
+
+Démarrage via systemd (collecte permanente) :
 
 ```bash
-git clone https://github.com/TON_USERNAME/honeypot-multi-services.git
-cd honeypot-multi-services
-
-# Créer l'environnement virtuel
-python3 -m venv venv
-source venv/bin/activate
-
-# Installer les dépendances
-pip install paramiko asyncssh flask pyftpdlib \
-            aiosmtpd pandas matplotlib reportlab
+sudo systemctl start honeypot
+sudo systemctl start honeypot-dashboard
+sudo systemctl enable honeypot honeypot-dashboard
 ```
 
----
-
-## 📖 Utilisation
-
-### Démarrage
+Lancement manuel en mode test (ports hauts, sans privilèges root) :
 
 ```bash
 source venv/bin/activate
-
-# Terminal 1 — Lancer les 4 services honeypot
 python main.py
-
-# Terminal 2 — Lancer le dashboard
-python dashboard.py
 ```
 
-**Sortie attendue :**
-```
-╔══════════════════════════════════════════╗
-║   🍯 HONEYPOT MULTI-SERVICES v2.0        ║
-╚══════════════════════════════════════════╝
-[SSH]  🟢 Honeypot SSH  démarré sur port 2222
-[HTTP] 🟢 Honeypot HTTP démarré sur port 8080
-[FTP]  🟢 Honeypot FTP  démarré sur port 2121
-[SMTP] 🟢 Honeypot SMTP démarré sur port 2525
-🍯 Honeypot actif — Ctrl+C pour arrêter
-```
+## Accès au tableau de bord
 
-### Générer un rapport d'analyse
+Le tableau de bord n'est pas exposé sur Internet. On y accède par tunnel SSH
+depuis son poste :
 
 ```bash
-python report.py
-# → Rapport généré : reports/rapport_honeypot_20260415_1423.pdf
+ssh -p <PORT_ADMIN> -L 5000:localhost:5000 <user>@<IP_SERVEUR>
 ```
 
-### Consulter les logs
+Puis ouvrir `http://localhost:5000` dans le navigateur.
 
-```bash
-# Logs en temps réel
-tail -f logs/honeypot.log
+## Sécurité du dispositif
 
-# Requêtes SQL directes
-sqlite3 logs/honeypot.db "SELECT * FROM connections ORDER BY id DESC LIMIT 20;"
-sqlite3 logs/honeypot.db "SELECT service, COUNT(*) FROM connections GROUP BY service;"
-sqlite3 logs/honeypot.db "SELECT username, password, COUNT(*) as nb FROM connections GROUP BY username, password ORDER BY nb DESC LIMIT 10;"
-```
+Un honeypot attire délibérément des attaquants ; il doit donc être lui-même
+irréprochable. Les mesures retenues :
 
----
+- Déploiement sur un serveur dédié et isolé, sans donnée sensible.
+- SSH d'administration déplacé sur un port dédié, login root désactivé,
+  authentification par clé.
+- Pare-feu en liste blanche : seuls les ports honeypot et le port
+  d'administration sont ouverts ; le tableau de bord reste fermé.
+- Audit du code ayant conduit à corriger une injection de patron côté serveur
+  (SSTI) dans le module HTTP.
+- Aucune commande réellement exécutée : l'attaquant n'obtient jamais un vrai shell.
 
-## 📊 Dashboard
+## Stack technique
 
-Accessible sur `http://<IP_VM>:5000` — refresh automatique toutes les 5 secondes.
+Python, Paramiko (SSH), Flask (HTTP et dashboard), pyftpdlib (FTP),
+aiosmtpd (SMTP), SQLite, geoip2 / GeoLite2 (géolocalisation).
 
-**Contenu du dashboard :**
+## Avertissement
 
-- 🔢 **KPIs** — connexions totales, IPs uniques, activité dernière heure, commandes SSH
-- 📊 **Barres** — répartition des attaques par service
-- 📈 **Histogramme** — activité sur les 24 dernières heures
-- 🌍 **Top 8 IPs** — classement des attaquants les plus actifs
-- 🔑 **Top credentials** — couples username/password les plus essayés
-- ⚡ **Flux live** — 15 dernières connexions en temps réel
-- 💻 **Commandes SSH** — historique des commandes saisies avec IP source
-
----
-
-## 📈 Résultats observés
-
-Les attaques automatisées présentent des patterns caractéristiques :
-
-**Credentials les plus testés sur SSH :**
-```
-admin / admin        → ~30% des tentatives
-root  / root         → ~25% des tentatives
-root  / toor         → ~15% des tentatives
-admin / password     → ~10% des tentatives
-pi    / raspberry    → ~8%  (Raspberry Pi par défaut)
-```
-
-**Séquence de commandes post-connexion :**
-```bash
-# Phase 1 — Reconnaissance
-whoami && id && uname -a && hostname
-
-# Phase 2 — Recherche de données sensibles
-cat /etc/passwd && ls -la && history
-
-# Phase 3 — Persistance (tentatives)
-wget http://... && curl http://...
-```
-
-**Observation clé :** 98% des attaques sont **entièrement automatisées** — les bots commencent à scanner un port SSH dans les **4 minutes** suivant son exposition sur Internet.
-
----
-
-## 🔐 Sécurité et éthique
-
-> ⚠️ **Avertissement légal**
->
-> Ce projet est développé à des fins **pédagogiques uniquement** dans le cadre d'une formation en cybersécurité.
->
-> - Déployez uniquement sur un **réseau isolé** ou une VM locale
-> - N'exposez pas ce service sur Internet **sans autorisation explicite**
-> - Les données collectées sont à usage **pédagogique et confidentiel**
-> - L'utilisation contre des systèmes tiers sans autorisation est **illégale** (Art. 323-1 CP)
-> - Ce projet respecte le **RGPD** et les législations françaises en vigueur
-
----
-
-## 🗺 Roadmap
-
-- [ ] Géolocalisation des IPs (MaxMind GeoIP)
-- [ ] Alertes temps réel (email / Slack / webhook)
-- [ ] Module Telnet (port 23)
-- [ ] Module SMB/RDP (attaques Windows)
-- [ ] Détection automatique des scanners (Shodan, Masscan, Mirai)
-- [ ] Export des IoC au format STIX/TAXII
-- [ ] Intégration SIEM (Elastic / Graylog)
-
----
-
-## 📄 Licence
-
-Ce projet est sous licence **MIT** — voir [LICENSE](LICENSE) pour plus de détails.
-
----
-
-<div align="center">
-
-Développé avec ❤️ par **Kouassi Yves-Roland OHIN-CODJOVI**
-
-Étudiant en Cybersécurité · ESGI 3SI2 · Paris
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat-square&logo=linkedin&logoColor=white)](https://linkedin.com/in/yvesrolandohin)
-[![GitHub](https://img.shields.io/badge/GitHub-100000?style=flat-square&logo=github&logoColor=white)](https://github.com/yvesrolandohin2023-coder)
-
-*"The best way to understand attackers is to watch them work."*
-
-</div>
+Ce projet est développé à des fins pédagogiques et défensives. Il doit être
+déployé sur une infrastructure isolée et ne jamais être utilisé contre des
+systèmes tiers sans autorisation. Les adresses collectées le sont à usage
+pédagogique uniquement.
