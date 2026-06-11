@@ -1,5 +1,5 @@
 
-![Dashboard de supervision](modules/dashboard.jpg)
+![Dashboard de supervision](screenshot.jpg)
 
 # Honeypot multi-services
 
