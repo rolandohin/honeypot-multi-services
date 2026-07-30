@@ -54,9 +54,9 @@ def api_data():
                   query("SELECT service, COUNT(*) as cnt FROM connections GROUP BY service")}
     top_ips = query("""
         SELECT src_ip, COUNT(*) as cnt, MAX(timestamp) as last_seen
-        FROM connections GROUP BY src_ip ORDER BY cnt DESC LIMIT 8
+        FROM connections GROUP BY src_ip ORDER BY cnt DESC LIMIT 15
     """)
-    # Enrichissement géographique de chaque IP
+    
     for row in top_ips:
         code, name = lookup_country(row["src_ip"])
         row["country_code"] = code
@@ -65,17 +65,17 @@ def api_data():
     top_creds = query("""
         SELECT username, password, COUNT(*) as cnt
         FROM connections WHERE username IS NOT NULL
-        GROUP BY username, password ORDER BY cnt DESC LIMIT 8
+        GROUP BY username, password ORDER BY cnt DESC LIMIT 15
     """)
     recent = query("""
         SELECT timestamp, service, src_ip, username, password, success
-        FROM connections ORDER BY id DESC LIMIT 15
+        FROM connections ORDER BY id DESC LIMIT 25
     """)
     recent_cmds = query("""
         SELECT cm.timestamp, cm.command, co.src_ip
         FROM commands cm
         JOIN connections co ON cm.connection_id = co.id
-        ORDER BY cm.id DESC LIMIT 10
+        ORDER BY cm.id DESC LIMIT 20
     """)
     hourly = defaultdict(int)
     rows = query("SELECT timestamp FROM connections WHERE timestamp > ?",
