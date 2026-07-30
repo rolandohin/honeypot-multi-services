@@ -44,10 +44,10 @@ Un honeypot est un **leurre informatique** : un système délibérément conçu 
 
 | Service | Port | Protocole | Ce qui est capturé |
 |---------|------|-----------|-------------------|
-| 🔐 **SSH** | 2222 | TCP | Credentials + commandes shell |
-| 🌐 **HTTP** | 8080 | TCP | Soumissions formulaires + User-Agent + paths |
-| 📁 **FTP** | 2121 | TCP | Credentials + fichiers consultés |
-| ✉️ **SMTP** | 2525 | TCP | Tentatives de relay + MAIL FROM/RCPT TO |
+| 🔐 **SSH** | 22 | TCP | Credentials + commandes shell |
+| 🌐 **HTTP** | 80 | TCP | Soumissions formulaires + User-Agent + paths |
+| 📁 **FTP** | 21 | TCP | Credentials + fichiers consultés |
+| ✉️ **SMTP** | 25 | TCP | Tentatives de relay + MAIL FROM/RCPT TO |
 | 📊 **Dashboard** | 5000 | HTTP | Interface de supervision temps réel |
 
 ### Caractéristiques techniques
@@ -73,8 +73,8 @@ Un honeypot est un **leurre informatique** : un système délibérément conçu 
 │                                                             │
 │   ┌──────────┐     ┌────────────────────────────────────┐  │
 │   │ main.py  │────▶│           Modules                  │  │
-│   │Orchestr. │     │  SSH:2222  HTTP:8080  FTP:2121      │  │
-│   └──────────┘     │            SMTP:2525               │  │
+│   │Orchestr. │     │  SSH:22  HTTP:80  FTP:21           │  │
+│   └──────────┘     │            SMTP:25                 │  │
 │                    └────────────────┬───────────────────┘  │
 │                                     │ events                │
 │                    ┌────────────────▼───────────────────┐  │
